@@ -1,0 +1,220 @@
+<?php
+
+/**
+ * @file
+ * This is the file description for Untitled 3 module.
+ *
+ * In this more verbose, multi-line description, you can specify what this
+ * file does exactly. Make sure to wrap your documentation in column 78 so
+ * that the file can be displayed nicely in default-sized consoles.
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function ddp_permission() {
+  $perms = array();
+  $perms['administer ddp'] = array(
+    'title' => t('Administer ddp'),
+    'description' => t('Perform administration tasks for ddp.'),
+  );
+  $perms['access ddp'] = array(
+    'title' => t('Access ddp'),
+    'description' => t('Access ddp'),
+  );
+
+  return $perms;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function ddp_menu() {
+  $items = array();
+  $items['ddp'] = array(
+    'title' => 'Points Profile',
+    'description' => 'DDP profile',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ddp_profile'),
+    'access arguments' => array('access ddp'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_form().
+ */
+function ddp_profile($form, &$form_state) {
+  $form = array();
+
+  $form['sex'] = array(
+    '#type' => 'radios',
+    '#title' => t('Sex'),
+    '#required' => TRUE,
+    '#options' => array(
+      'Male' => t('Male'),
+      'Female' => t('Female'),
+    ),
+  );
+  $form['weight'] = array(
+    '#required' => TRUE,
+    '#type' => 'textfield',
+    '#title' => t('weight'),
+    '#description' => 'weight in kg',
+  );
+  $form['width'] = array(
+    '#required' => TRUE,
+    '#type' => 'textfield',
+    '#title' => t('width'),
+    '#description' => 'width in meters',
+  );
+  $form['birthdate'] = array(
+    '#required' => TRUE,
+    '#type' => 'date',
+    '#title' => t('Birth Date'),
+  );
+  $form['tmb'] = array(
+    '#required' => TRUE,
+    '#type' => 'select',
+    '#options' => array(
+      '1.2' => 'Sedentário',
+      '1.4' => 'Levemente ativo',
+      '1.6' => 'Moderadamente ativo',
+      '1.9' => 'Muito ativo',
+      '2.3' => 'Extremamente ativo',
+    ),
+    '#title' => t('TMB'),
+    '#ajax' => array(
+      'callback' => '_ddp_points_callback',
+      'wrapper' => 'textfields-div',
+    ),
+  );
+  $form['textfields_fieldset'] = array(
+    '#title' => t("Additional informations"),
+    '#prefix' => '<div id="textfields-div">',
+    '#suffix' => '</div>',
+    '#type' => 'fieldset',
+    '#description' => t('Automatic calculus'),
+  );
+  $form['textfields_fieldset']['age'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Age'),
+    '#disabled' => TRUE,
+  );
+  $form['textfields_fieldset']['imc'] = array(
+    '#type' => 'textfield',
+    '#title' => t('IMC'),
+    '#disabled' => TRUE,
+  );
+  $form['textfields_fieldset']['nde'] = array(
+    '#type' => 'textfield',
+    '#title' => t('NDE'),
+    '#disabled' => TRUE,
+  );
+  $form['textfields_fieldset']['ftmb'] = array(
+    '#type' => 'textfield',
+    '#title' => t('FTMB'),
+    '#disabled' => TRUE,
+  );
+  $form['textfields_fieldset']['points'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Max Points'),
+    '#disabled' => TRUE,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+
+  if (!empty($form_state['values']['birthdate']['year'])) {
+    $today = time();
+    $m     = $form_state['values']['birthdate']['month'];
+    $d     = $form_state['values']['birthdate']['day'];
+    $y     = $form_state['values']['birthdate']['year'];
+
+    $birth     = gmmktime(0, 0, 0, $m, $d, $y);
+    $age       = ($today - $birth) / (365 * 60 * 60 * 24);
+    $age       = floor($age);
+    $weight    = $form_state['values']['weight'];
+    $width     = $form_state['values']['width'];
+    $factortmb = $form_state['values']['tmb'];
+    $imc       = $weight / ($width * $width);
+    $imc       = ceil($imc);
+
+    if ($form_state['values']['sex'] == 'Male') {
+      if ($age < 3) {
+        $tmb = 60.9 * $weight - 54;
+      }
+      elseif ($age < 10) {
+        $tmb = 22.7 * $weight + 495;
+      }
+      elseif ($age < 18) {
+        $tmb = 17.5 * $weight + 651;
+      }
+      elseif ($age < 30) {
+        $tmb = 15.3 * $weight + 679;
+      }
+      elseif ($age < 60) {
+        $tmb = (11.6 * $weight) + 879;
+      }
+      else {
+        $tmb = 13.5 * $weight + 487;
+      };
+    }
+    else {
+      if ($age < 3) {
+        $tmb = 61 * $weight - 51;
+      }
+      elseif ($age < 10) {
+        $tmb = 22.5 * $weight + 499;
+      }
+      elseif ($age < 18) {
+        $tmb = 12.2 * $weight + 749;
+      }
+      elseif ($age < 30) {
+        $tmb = 14.7 * $weight + 496;
+      }
+      elseif ($age < 60) {
+        $tmb = 8.7 * $weight + 829;
+      }
+      else {
+        $tmb = 10.5 * $weight + 596;
+      };
+    };
+
+    $nde         = $tmb * $factortmb;
+    $points      = ceil($nde / 3.6);
+    $weightindex = ($form_state['values']['sex'] == 'Male') ? 200 : 175;
+
+    if ($age < 30) {
+      $weightindex += 0;
+    }
+    elseif ($age < 35) {
+      $weightindex += 25;
+    }
+    else {
+      $weightindex += 50;
+    }
+
+    $points -= $weightindex;
+
+    $form['textfields_fieldset']['imc']['#default_value'] = $imc;
+    $form['textfields_fieldset']['age']['#default_value'] = $age;
+    $form['textfields_fieldset']['nde']['#default_value'] = $nde;
+    $form['textfields_fieldset']['points']['#default_value'] = $points;
+    $form['textfields_fieldset']['ftmb']['#default_value'] = $tmb;
+  }
+  return $form;
+}
+
+function _ddp_points_callback($form, $form_state) {
+  return $form['textfields_fieldset'];
+}
+
+/**
+ * Implementation of hook_form_alter()
+ */
+function ddp_form_alter(&$form, $form_state, $form_id) {
+  //drupal_set_message("Form ID is : " . $form_id);
+}
