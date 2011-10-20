@@ -11,15 +11,58 @@
 function ddp_menu() {
   $items = array();
   $items['ddp/profile'] = array(
-    'title' => 'Profile',
+    'title' => 'DDP - Profile',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('ddp_profile_form'),
+    'access arguments' => array('authenticated users'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['ddp/admin/foodgroups'] = array(
+    'title' => 'DDP - Food Groups',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ddp_admin_addfoodgroups_form'),
+    'access arguments' => array('authenticated users'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['ddp/admin/foodgroups2'] = array(
+    'title' => 'DDP - Food Groups 2',
+    'page callback' => 'ddp_foodgroup',
     'access arguments' => array('authenticated users'),
     'type' => MENU_NORMAL_ITEM,
   );
   return $items;
 }
 
+function ddp_foodgroup() {
+  $page = drupal_get_form('ddp_admin_addfoodgroups_form');
+  $page = render($page);
+  $page .= '<h2>'. t('Food group list') .'</h2>';
+  $page .= ddp_foodgroup_list();
+  return $page;
+}
+
+function ddp_foodgroup_list() {
+  $elements = array();
+  $qry = db_query('SELECT * FROM {ddp_foodgroup}');
+  $rows[] = array();
+
+  foreach ($qry as $record) {
+    $rows['data'] = array(
+      $record->fgid,
+      $record->name,
+    );
+  }
+
+  $header = array('ID, Name');
+  return theme('table',$header,$rows,array());
+}
+
+/**
+ * Implements hook_form().
+ * @param type $node
+ * @param type $form_state
+ * @return type
+ */
 function ddp_profile_form($node, &$form_state) {
   $form = array();
   $form['sex'] = array(
@@ -189,6 +232,19 @@ function ddp_profile_callback($form, &$form_state) {
   return $form['textfields_fieldset'];
 }
 
+function ddp_admin_addfoodgroups_form($node, &$form_state) {
+  $form = array();
+  $form['groupname'] = array(
+    '#required' => TRUE,
+    '#type' => 'textfield',
+    '#title' => t('Group Name'),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+  );
+  return $form;
+}
 /**
  * Implementation of hook_form_alter()
  */
