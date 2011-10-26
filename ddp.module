@@ -30,6 +30,19 @@ function ddp_menu() {
     'access arguments' => array('authenticated users'),
     'type' => MENU_NORMAL_ITEM,
   );
+  $items['ddp/admin/food'] = array(
+    'title' => 'DDP - Food',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ddp_admin_addfoods_form'),
+    'access arguments' => array('authenticated users'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['ddp/admin/teste'] = array(
+    'title' => 'DDP - Teste',
+    'page callback' => 'teste_table',
+    'access arguments' => array('authenticated users'),
+    'type' => MENU_NORMAL_ITEM,
+  );
   return $items;
 }
 
@@ -47,14 +60,20 @@ function ddp_foodgroup_list() {
   $rows[] = array();
 
   foreach ($qry as $record) {
-    $rows['data'] = array(
-      $record->fgid,
-      $record->name,
+    $rows[] = array(
+      array('data' => $record->fgid),
+      array('data' => $record->name),
+      array('data' => l(t('Edit'),'./ddp/admin/foodgroups2/'. $record->fgid .'/edit'). ' / ' . l(t('Delete'),'./ddp/admin/foodgroups2/'. $record->fgid .'/delete')),
     );
   }
 
-  $header = array('ID, Name');
-  return theme('table',$header,$rows,array());
+  $header = array(
+    array('data' => t('ID')),
+    array('data' => t('Group Name')),
+    array('data' => ''),
+  );
+
+  return theme('table', array('header' => $header, 'rows'=> $rows));
 }
 
 /**
@@ -155,9 +174,7 @@ function ddp_profile_form($node, &$form_state) {
     $d = $form_state['values']['birthdate']['day'];
     $y = $form_state['values']['birthdate']['year'];
 
-
     print_r($form_state['values']['teste']);
-
 
     $birth = gmmktime(0,0,0,$m,$d,$y);
     $age = ($today - $birth) / (365*60*60*24);
@@ -245,9 +262,75 @@ function ddp_admin_addfoodgroups_form($node, &$form_state) {
   );
   return $form;
 }
+
+function ddp_admin_addfoodgroups_form_submit($node, &$form_state) {
+  $tnx = db_transaction();
+  try  {
+    db_merge('{ddp_foodgroup}')
+    ->key(array('name' => $form_state['values']['groupname']))
+    ->fields(array(
+    'name' => $form_state['values']['groupname'],
+    ))
+    ->execute();
+    drupal_set_message(t('Group Food OK!'));
+  }
+  catch (Exception $e) {
+    $tnx->rollback();
+    watchdog_exception('type', $e);
+  }
+}
+
 /**
  * Implementation of hook_form_alter()
  */
 //function form_alter(&$form, $form_state, $form_id) {
 //  //drupal_set_message("Form ID is : " . $form_id);
 //}
+
+
+function teste_table() {
+  $header = array(
+    array('data' => t('Header cell1')),
+    array('data' => t('Header cell2')),
+    array('data' => t('Header cell3'))
+  );
+  $rows[] = array(
+    array('data' => t('Row 1 – Cell 1')),
+    array('data' => t('Row 1 – Cell 2')),
+    array('data' => t('Row 1 – Cell 3'))
+  );
+  $rows[] = array(
+    array('data' => t('Row 2 – Cell 1')),
+    array('data' => t('Row 2 – Cell 2')),
+    array('data' => t('Row 2 – Cell 3'))
+  );
+
+  return theme('table', array('header' => $header, 'rows'=> $rows));
+
+}
+
+function ddp_admin_addfoods_form($node, &$form_value) {
+  $form = array();
+  $form['group'] = array(
+    '#type' => 'radios',
+    '#title' => t('Sex'),
+    '#required' => TRUE,
+    '#options' => array(
+      'Male',
+      'Female',
+    ),
+  );
+  $form['name'] = array(
+    '#required' => TRUE,
+    '#type' => 'textfield',
+    '#title' => t('weight'),
+    '#description' => 'weight in kg',
+  );
+  $form['points'] = array(
+    '#required' => TRUE,
+    '#type' => 'textfield',
+    '#title' => t('width'),
+    '#description' => 'width in meters',
+  );
+  return $form;
+}
